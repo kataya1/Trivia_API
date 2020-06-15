@@ -10,6 +10,7 @@ QUESTIONS_PER_PAGE = 10
 
 # functions
 def paginate_questions(request, selection):
+    # i copied this function from the lesson
     'takes in request and a list of db question objects, format them, then return a page of questions'
     page = request.args.get('page', 1, type=int)
     start = (page - 1) * QUESTIONS_PER_PAGE
@@ -92,10 +93,9 @@ def create_app(test_config=None):
         question_data = Question.query.filter(Question.id == id).one_or_none()
         if question_data:
             Question.delete(question_data)
-            result = {
+            return jsonify({
                 "success": True,
-            }
-            return jsonify(result)
+            })
         else:
             abort(404)
         
