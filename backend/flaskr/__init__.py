@@ -183,27 +183,19 @@ def create_app(test_config=None):
             previous_questions = body.get('previous_questions')
             # to check if sent category is valid or not since whene pressing ALL it sends 'type': 'click'
             category = Category.query.filter(Category.id == quiz_category['id']).one_or_none()
-            print('------------------------------------------')
-            print(category)
-            print(previous_questions)
-
             if category:
                 questions = Question.query.order_by(Question.id).filter(Question.category == category.id).all()
-                print(questions)
             else:
                 questions = Question.query.order_by(Question.id).all()
-                print(questions)
 
             # turned into a set so that the time complexity is O(1), however the previous questions should probably be stored in back end not send from front end each time
             pq_set = set(previous_questions)
             # choosing the questions that's not in previous questions
             new_questions = [*filter((lambda x: x.id not in pq_set), questions )]
-            print("new_questions", new_questions)
             if len(new_questions) != 0:
                 random_question = random.choice(new_questions)
             else:
                 abort(404)
-            print('--------------------------------------------')
             return jsonify({
                 'question': random_question.format()
             })
