@@ -24,10 +24,13 @@ class TriviaTestCase(unittest.TestCase):
             # create all tables
             self.db.create_all()
 
-            # creating a dummy entry
+            # creating a dummy entry. for a question to be deleted
             self.q = Question(question="how u doing?", answer="ok", category=4, difficulty=1)
             self.db.session.add(self.q)
             self.db.session.flush()
+            self.id_to_be_deleted = self.q.id
+            self.db.session.commit()
+            
         
     
     def tearDown(self):
@@ -39,6 +42,7 @@ class TriviaTestCase(unittest.TestCase):
     TODO
     Write at least one test for each test for successful operation and for expected errors.
     """
+    # categories
     def test_get_categories(self):
         res = self.client().get('/categories')
         data = json.loads(res.data)
@@ -46,56 +50,14 @@ class TriviaTestCase(unittest.TestCase):
         self.assertTrue(data['categories'])
     
     def test_get_categories_questions(self):
-        res = self.client().get(f'/categories/1/questions')
+        res = self.client().get('/categories/1/questions')
         data = json.loads(res.data)
         self.assertEqual(res.status_code, 200)
         self.assertTrue(data['questions'])
         self.assertTrue(data['total_questions'])
         self.assertEqual(data['current_category'], 1)
         
-
-    def test_delete_questions(self):
-        res = self.client().delete(f'/questions/{self.q.id}')
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(self.q, None)
-    
-    def test_delete_questions_nonexistant_book(self):
-        id = 99999
-        res = self.client().delete(f'/questions/{id}')
-        self.assertEqual(res.status_code, 422)
-        q = Question.query.filter(Question.id == id).one_or_none()
-        self.assertEqual(q, None)
-    
-    def test_search_question_with_result(self):
-        res = self.client().post('/questions', json={'searchTerm': 'who'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code,200)
-        self.assertTrue(data['questions'])
-        self.assertTrue(len(data['questions']))
-        self.assertTrue(data['total_questions'])
-        self.assertTrue(data['current_category'])
- 
-    def test_search_question_without_result(self):
-        res = self.client().post('/questions', json={'searchTerm': 'wsrtrhrethrshtiuarhe'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code,200)
-        self.assertEqual(data['questions'], [])
-        self.assertTrue(data['total_questions'])
-        self.assertTrue(data['current_category'])
-
-    def test_add_question(self):
-        res = self.client().post('/questions', json={'question' : 'who?', 'answer' : 'who who?', 'difficulty' : 2, 'category' : 4})
-        self.assertEqual(res.status_code, 200)
-    
-    def test_add_question_fail(self):
-        res = self.client().post('/questions', json={ 'answer' : 'who who?', 'difficulty' : 2, 'category' : 4})
-        self.assertEqual(res.status_code, 400)
-    
-    def test_405_create_queston(self):
-        res = self.client().post('/questions/1', json={'question' : 'who?', 'answer' : 'who who?', 'difficulty' : 2, 'category' : 4})
-        self.assertEqual(res.status_code, 405)
-        
-
+    # questions
     def test_get_paginated_questions(self):
         res = self.client().get('/questions')
         data = json.loads(res.data)
@@ -112,7 +74,64 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(res.status_code, 404)
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], 'resource not found')
+
+    def test_add_question(self):
+        res = self.client().post('/questions', json={'question' : 'who?', 'answer' : 'who who?', 'difficulty' : 2, 'category' : 4})
+        self.assertEqual(res.status_code, 200)
+    
+    def test_add_question_fail(self):
+        res = self.client().post('/questions', json={ 'answer' : 'who who?', 'difficulty' : 2, 'category' : 4})
+        self.assertEqual(res.status_code, 422)
+
+    def test_search_question_with_result(self):
+        res = self.client().post('/questions', json={'searchTerm': 'who'})
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code,200)
+        self.assertTrue(data['questions'])
+        self.assertTrue(len(data['questions']))
+        self.assertTrue(data['total_questions'])
+        self.assertTrue(data['current_category'])
+ 
+    def test_search_question_without_result(self):
+        res = self.client().post('/questions', json={'searchTerm': 'whpftrsuetrsyuothreshtreho'})
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code,200)
+        self.assertEqual(data['questions'], [])
+        self.assertEqual(data['total_questions'], 0)
         
+
+    def test_405_create_queston(self):
+        res = self.client().post('/questions/1', json={'question' : 'who?', 'answer' : 'who who?', 'difficulty' : 2, 'category' : 4})
+        self.assertEqual(res.status_code, 405)
+        
+
+    
+    def test_delete_question(self):
+        id = self.id_to_be_deleted
+        res = self.client().delete(f'/questions/{id}')
+        self.assertEqual(res.status_code, 200)
+        q = Question.query.filter(Question.id == id).one_or_none()
+        self.assertEqual(q, None)
+
+    def test_delete_questions_nonexistant_question(self):
+        
+        res = self.client().delete('/questions/999')
+        self.assertEqual(res.status_code, 404)
+        
+    # quizzez
+    def test_quizes(self):
+        previous_questions = []
+        res = self.client().post('/quizzes', json={'previous_questions' : previous_questions, 'quiz_category' :{'id': 2, 'type': "Art"}})
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn(data['question'], previous_questions)
+        
+        
+
+    # server connection
+    def test_server_connection(self):
+        # test if there is a postgres server running
+        res = self.client()
 
 # Make the tests conveniently executable
 if __name__ == "__main__":
